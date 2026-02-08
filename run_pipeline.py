@@ -1,5 +1,6 @@
 import os
 import re
+import socket
 import sqlite3
 
 from script import fetch_cdx_rows, write_cdx_rows
@@ -58,12 +59,8 @@ def save_snapshots(rows: list[tuple[str, str]], username: str, db_path: str) -> 
             mark_row(db_path, timestamp, original, 1, None)
             print([timestamp, original, output_path])
         except Exception as exc:
-            if isinstance(exc, concurrent.futures.TimeoutError):
-                error_text = "TimeoutError: request timed out after 10s"
-            else:
-                error_text = str(exc)
-            mark_row(db_path, timestamp, original, 2, error_text)
-            print([timestamp, original, error_text])
+            mark_row(db_path, timestamp, original, 2, str(exc))
+            print([timestamp, original, str(exc)])
 
 
 def main() -> None:
