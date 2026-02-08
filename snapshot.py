@@ -176,8 +176,9 @@ __all__ = [
 ]
 
 
+#一个snapshot的例子
 if __name__ == "__main__":
-    example_timestamp = "20241009081148"
-    example_url = "https://twitter.com/nekomakiQAQ/status/1843927329254584430"
+    example_timestamp = "20251012170444"
+    example_url = "https://x.com/NekoMakiQAQ/status/1977420179576700944"
     iframe_html = fetch_snapshot_content_iframe(example_timestamp, example_url)
     print(build_simplified_tweet_html(iframe_html))

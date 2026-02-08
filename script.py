@@ -1,5 +1,6 @@
 import json
 import os
+import sqlite3
 import urllib.parse
 import urllib.request
 
@@ -28,19 +29,34 @@ def fetch_cdx_rows(username: str) -> list[list[str]]:
 def write_cdx_rows(username: str, rows: list[list[str]]) -> str:
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{username}.txt")
-    with open(output_path, "w", encoding="utf-8") as handle:
-        handle.write("#pointer=0\n")
-        for row in rows:
-            timestamp, original = row[0], row[1]
-            handle.write(f"{timestamp}\t{original}\n")
+    output_path = os.path.join(output_dir, f"{username}.db")
+    with sqlite3.connect(output_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS snapshots (
+                timestamp TEXT NOT NULL,
+                original TEXT NOT NULL,
+                status INTEGER NOT NULL DEFAULT 0,
+                error TEXT,
+                PRIMARY KEY (timestamp, original)
+            )
+            """
+        )
+        conn.executemany(
+            """
+            INSERT OR IGNORE INTO snapshots (timestamp, original)
+            VALUES (?, ?)
+            """,
+            [(row[0], row[1]) for row in rows],
+        )
+        conn.commit()
     return output_path
 
 
 __all__ = ["fetch_cdx_rows", "build_params", "write_cdx_rows"]
 
-
+#run这个会直接存一遍下面username的database
 if __name__ == "__main__":
-    username = "NekoMakiQAQ"
+    username = "susiethegamer"
     output = write_cdx_rows(username, fetch_cdx_rows(username))
     print(output)
