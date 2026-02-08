@@ -1,4 +1,5 @@
 import json
+import os
 import urllib.parse
 import urllib.request
 
@@ -24,4 +25,22 @@ def fetch_cdx_rows(username: str) -> list[list[str]]:
     return data[1:] if data else []
 
 
-__all__ = ["fetch_cdx_rows", "build_params"]
+def write_cdx_rows(username: str, rows: list[list[str]]) -> str:
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"{username}.txt")
+    with open(output_path, "w", encoding="utf-8") as handle:
+        handle.write("#pointer=0\n")
+        for row in rows:
+            timestamp, original = row[0], row[1]
+            handle.write(f"{timestamp}\t{original}\n")
+    return output_path
+
+
+__all__ = ["fetch_cdx_rows", "build_params", "write_cdx_rows"]
+
+
+if __name__ == "__main__":
+    username = "NekoMakiQAQ"
+    output = write_cdx_rows(username, fetch_cdx_rows(username))
+    print(output)
