@@ -37,8 +37,37 @@ def build_simplified_tweet_html(iframe_html: str) -> str:
 
     name = html_module.escape(author.get("name", ""))
     username = html_module.escape(author.get("username", ""))
+    bio = html_module.escape(author.get("description", ""))
+    profile_image_url = html_module.escape(author.get("profile_image_url", ""))
+    author_created_at = html_module.escape(author.get("created_at", ""))
+    author_metrics = author.get("public_metrics", {}) or {}
+    author_followers = author_metrics.get("followers_count", "")
+    author_following = author_metrics.get("following_count", "")
+    author_tweets = author_metrics.get("tweet_count", "")
+    author_likes = author_metrics.get("like_count", "")
+    author_listed = author_metrics.get("listed_count", "")
+    author_media = author_metrics.get("media_count", "")
+
     text = html_module.escape(data.get("text", ""))
     created_at = html_module.escape(data.get("created_at", ""))
+    conversation_id = html_module.escape(data.get("conversation_id", ""))
+    referenced_tweets = data.get("referenced_tweets", []) or []
+    referenced_summary = ", ".join(
+        f"{t.get('type', '')}:{t.get('id', '')}" for t in referenced_tweets
+    )
+    referenced_summary = html_module.escape(referenced_summary)
+
+    tweet_metrics = data.get("public_metrics", {}) or {}
+    reply_count = tweet_metrics.get("reply_count", "")
+    retweet_count = tweet_metrics.get("retweet_count", "")
+    like_count = tweet_metrics.get("like_count", "")
+    quote_count = tweet_metrics.get("quote_count", "")
+    bookmark_count = tweet_metrics.get("bookmark_count", "")
+    impression_count = tweet_metrics.get("impression_count", "")
+
+    mentions = data.get("entities", {}).get("mentions", []) or []
+    mention_list = ", ".join(f"@{m.get('username', '')}" for m in mentions)
+    mention_list = html_module.escape(mention_list)
 
     return f"""<!DOCTYPE html>
 <html>
@@ -66,12 +95,32 @@ def build_simplified_tweet_html(iframe_html: str) -> str:
       }}
       .username {{
         color: #657786;
+        margin-bottom: 8px;
+      }}
+      .bio {{
+        color: #374151;
         margin-bottom: 12px;
+      }}
+      .author-meta {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: #4b5563;
+        font-size: 0.9rem;
       }}
       .content {{
         font-size: 1.1rem;
         line-height: 1.6;
         white-space: pre-wrap;
+      }}
+      .metrics {{
+        margin-top: 12px;
+        color: #4b5563;
+        font-size: 0.9rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
       }}
       .date {{
         margin-top: 12px;
@@ -84,8 +133,30 @@ def build_simplified_tweet_html(iframe_html: str) -> str:
     <article class="tweet">
       <div class="author">{name}</div>
       <div class="username">@{username}</div>
+      <div class="bio">{bio}</div>
+      <div class="author-meta">
+        <span>Profile image: {profile_image_url}</span>
+        <span>Joined: {author_created_at}</span>
+        <span>Followers: {author_followers}</span>
+        <span>Following: {author_following}</span>
+        <span>Tweets: {author_tweets}</span>
+        <span>Likes: {author_likes}</span>
+        <span>Listed: {author_listed}</span>
+        <span>Media: {author_media}</span>
+      </div>
       <div class="content">{text}</div>
-      <div class="date">{created_at}</div>
+      <div class="metrics">
+        <span>Replies: {reply_count}</span>
+        <span>Retweets: {retweet_count}</span>
+        <span>Likes: {like_count}</span>
+        <span>Quotes: {quote_count}</span>
+        <span>Bookmarks: {bookmark_count}</span>
+        <span>Impressions: {impression_count}</span>
+      </div>
+      <div class="date">Created at: {created_at}</div>
+      <div class="date">Conversation: {conversation_id}</div>
+      <div class="date">Referenced tweets: {referenced_summary}</div>
+      <div class="date">Mentions: {mention_list}</div>
     </article>
   </body>
 </html>
