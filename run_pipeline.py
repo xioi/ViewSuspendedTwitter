@@ -1,3 +1,4 @@
+import concurrent.futures
 import os
 import re
 import sqlite3
@@ -16,10 +17,11 @@ def load_pending_rows(db_path: str) -> list[tuple[str, str]]:
             """
             SELECT timestamp, original
             FROM snapshots
-            WHERE status IN (0, 2)
+            WHERE status IN (0)
             ORDER BY timestamp DESC
             """
         ).fetchall()
+        # WHERE status IN (0, 2)
     return [(row[0], row[1]) for row in rows]
 
 
@@ -35,25 +37,40 @@ def mark_row(db_path: str, timestamp: str, original: str, status: int, error: st
             (status, error, timestamp, original),
         )
         conn.commit()
+    print(f"== Marked row: {timestamp} {original} status={status}")
+
+def fetch_iframe_with_timeout(timestamp: str, original: str, timeout_seconds: int = 10) -> str:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fetch_snapshot_content_iframe, timestamp, original)
+        return future.result(timeout=timeout_seconds)
 
 
 def save_snapshots(rows: list[tuple[str, str]], username: str, db_path: str) -> None:
+    total = len(rows)
+    print(f"Total pending rows: {total}")
     for timestamp, original in rows:
+        print(f"Fetching snapshot: {timestamp} {original}")
         output_dir = f"output/{username}"
         os.makedirs(output_dir, exist_ok=True)
         try:
-            iframe_html = fetch_snapshot_content_iframe(timestamp, original)
+            iframe_html = fetch_iframe_with_timeout(timestamp, original, timeout_seconds=10)
+            print("== Fetched snapshot, building HTML...")
             simplified_html = build_simplified_tweet_html(iframe_html)
             safe_original = sanitize_filename(original)
             output_name = f"snapshot_{timestamp}_{safe_original}.html"
             output_path = os.path.join(output_dir, output_name)
+            print(f"== Writing file: {output_path}")
             with open(output_path, "w", encoding="utf-8") as handle:
                 handle.write(simplified_html)
-            print([timestamp, original, output_path])
             mark_row(db_path, timestamp, original, 1, None)
+            print([timestamp, original, output_path])
         except Exception as exc:
-            mark_row(db_path, timestamp, original, 2, str(exc))
-            print([timestamp, original, str(exc)])
+            if isinstance(exc, concurrent.futures.TimeoutError):
+                error_text = "TimeoutError: request timed out after 10s"
+            else:
+                error_text = str(exc)
+            mark_row(db_path, timestamp, original, 2, error_text)
+            print([timestamp, original, error_text])
 
 
 def main() -> None:
